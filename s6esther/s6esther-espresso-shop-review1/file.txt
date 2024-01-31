@@ -1,0 +1,202 @@
+NAME: frontend
+LAST DEPLOYED: Fri Jan 26 22:18:16 2024
+NAMESPACE: default
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: s6esther-espresso-shop-web3/templates/pdb.v1.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: s6esther-espresso-shop-review-v1
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: s6esther-espresso-shop-review
+---
+# Source: s6esther-espresso-shop-web3/templates/pdbv2.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: s6esther-espresso-shop-review-v2
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: s6esther-espresso-shop-review
+---
+# Source: s6esther-espresso-shop-web3/templates/serviceaccountv1..yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: s6esther-espresso-shop-review-v1
+  labels:
+    app: s6esther-espresso-shop-review
+---
+# Source: s6esther-espresso-shop-web3/templates/serviceaccountv2.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: s6esther-espresso-shop-review-v2
+  labels:
+    app: s6esther-espresso-shop-review
+---
+# Source: s6esther-espresso-shop-web3/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: s6esther-espresso-shop-review
+  labels:
+    app: s6esther-espresso-shop-review
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8092
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: s6esther-espresso-shop-review
+---
+# Source: s6esther-espresso-shop-web3/templates/deploymentv1..yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s6esther-espresso-shop-review-v1
+  labels:
+    app: s6esther-espresso-shop-review
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s6esther-espresso-shop-review
+  template:
+    metadata:
+      labels:
+        app: s6esther-espresso-shop-review
+        version: v1
+    spec:
+      serviceAccountName: frontend-s6esther-espresso-shop-web3
+      containers:
+        - name: s6esther-espresso-shop-web3
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "hossambarakat/espresso-shop-reviews"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVICE_VERSION
+              value: v1
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+# Source: s6esther-espresso-shop-web3/templates/deploymentv2.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s6esther-espresso-shop-review-v2
+  labels:
+    app: s6esther-espresso-shop-review
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s6esther-espresso-shop-review
+  template:
+    metadata:
+      labels:
+        app: s6esther-espresso-shop-review
+        version: v2
+    spec:
+      serviceAccountName: frontend-s6esther-espresso-shop-web3
+      containers:
+        - name: s6esther-espresso-shop-web3
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "hossambarakat/espresso-shop-reviews"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVICE_VERSION
+              value: v2
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+# Source: s6esther-espresso-shop-web3/templates/hpav1.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: s6esther-espresso-shop-review-v1
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: s6esther-espresso-shop-review
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+---
+# Source: s6esther-espresso-shop-web3/templates/hpav2.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: s6esther-espresso-shop-review-v2
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: s6esther-espresso-shop-review
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=s6esther-espresso-shop-web3,app.kubernetes.io/instance=frontend" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace default port-forward $POD_NAME 8080:$CONTAINER_PORT
