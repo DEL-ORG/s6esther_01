@@ -1,0 +1,27 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.appname }}-v2
+  labels:
+    version: {{ .Values.labels.versionv2 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.appname }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: {{ .Values.autoscaling.name }}
+      target:
+        type: {{ .Values.autoscaling.type }}
+        averageUtilization: {{ .Values.autoscaling.averageUtilization }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: {{ .Values.autoscaling.type }}
+        averageUtilization: {{ .Values.autoscaling.averageUtilization }}
+                

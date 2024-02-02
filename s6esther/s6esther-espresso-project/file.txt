@@ -1,0 +1,117 @@
+NAME: frontend
+LAST DEPLOYED: Sun Jan 21 13:16:21 2024
+NAMESPACE: s6esther
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: s6esther-espresso-shop-web3/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: s6esther-espresso-shop
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: s6esther-espresso-shop-web
+---
+# Source: s6esther-espresso-shop-web3/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: s6esther-espresso-shop
+  labels:
+    app: s6esther-espresso-shop-web
+---
+# Source: s6esther-espresso-shop-web3/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: s6esther-espresso-shop
+  labels:
+    app: s6esther-espresso-shop-web
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: s6esther-espresso-shop-web
+---
+# Source: s6esther-espresso-shop-web3/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s6esther-espresso-shop
+  labels:
+    app: s6esther-espresso-shop-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s6esther-espresso-shop-web
+  template:
+    metadata:
+      labels:
+        app: s6esther-espresso-shop-web
+        version: v1
+    spec:
+      serviceAccountName: frontend-s6esther-espresso-shop-web3
+      containers:
+        - name: s6esther-espresso-shop-web3
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "hossambarakat/espresso-shop-web"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          env:
+          - name: ProductCatalogUrl
+            value: http://espresso-shop-product-catalog-svc:8091
+          - name: ReviewsUrl
+            value: http://espresso-shop-reviews-svc:8092
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+# Source: s6esther-espresso-shop-web3/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: s6esther-espresso-shop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: s6esther-espresso-shop
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+
+NOTES:
+1. Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace s6esther -o jsonpath="{.spec.ports[0].nodePort}" services frontend-s6esther-espresso-shop-web3)
+  export NODE_IP=$(kubectl get nodes --namespace s6esther -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
